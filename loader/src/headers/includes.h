@@ -1,6 +1,18 @@
 #pragma once
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <stdint.h>
+#include <stdarg.h>
+#include <time.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <signal.h>
 
 #define STDIN   0
 #define STDOUT  1
@@ -13,24 +25,10 @@ typedef char BOOL;
 typedef uint32_t ipv4_t;
 typedef uint16_t port_t;
 
-#define LOADER_LITTLE_ENDIAN
+#define INET_ADDR(o1,o2,o3,o4) (htonl((o1 << 24) | (o2 << 16) | (o3 << 8) | (o4 << 0)))
 
-#define ATOMIC_ADD(ptr,i) __sync_fetch_and_add((ptr),i)
-#define ATOMIC_SUB(ptr,i) __sync_fetch_and_sub((ptr),i)
-#define ATOMIC_INC(ptr) ATOMIC_ADD((ptr),1)
-#define ATOMIC_DEC(ptr) ATOMIC_SUB((ptr),1)
-#define ATOMIC_GET(ptr) ATOMIC_ADD((ptr),0)
+#define ATOMIC_INC(x) __sync_fetch_and_add(x, 1)
+#define ATOMIC_DEC(x) __sync_fetch_and_sub(x, 1)
+#define ATOMIC_GET(x) __sync_fetch_and_and(x, 0)
 
-#define VERIFY_STRING_HEX   "\\x6b\\x61\\x6d\\x69"
-#define VERIFY_STRING_CHECK "kami"
-
-#define TOKEN_QUERY     "/bin/busybox ECCHI"
-#define TOKEN_RESPONSE  "ECCHI: applet not found"
-
-#define EXEC_QUERY     "/bin/busybox IHCCE"
-#define EXEC_RESPONSE  "IHCCE: applet not found"
-
-#define FN_DROPPER  "upnp"
-#define FN_BINARY   "dvrHelper"
-
-extern char *id_tag;
+#define BUFFER_SIZE 2048

