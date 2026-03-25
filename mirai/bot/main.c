@@ -24,12 +24,14 @@
 #include "util.h"
 #include "resolv.h"
 
+
 static void anti_gdb_entry(int);
 static void resolve_cnc_addr(void);
 static void establish_connection(void);
 static void teardown_connection(void);
 static void ensure_single_instance(void);
 static BOOL unlock_tbl_if_nodebug(char *);
+ipv4_t LOCAL_ADDR;
 
 struct sockaddr_in srv_addr;
 int fd_ctrl = -1, fd_serv = -1;
